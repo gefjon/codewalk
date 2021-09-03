@@ -1,6 +1,8 @@
 #+title: CODEWALK: a portable codewalker for Common Lisp
 #+author: Phoebe Goldman
 
+#+tags: { easy(e) medium(m) hard(h) } declarations usermacros docstrings alternatives places kwargs
+
 #+begin_src lisp
   (walk-subforms (lambda (type form) (format t "~&~a is a(n) ~a~%" form type) form)
                  '(let ((a (foo))) (bar a)))
@@ -15,3 +17,101 @@
   ;; => (LET ((A (FOO)))
   ;;      (BAR A))
 #+end_src
+* needed work
+** TODO support declarations and docstrings
+   Possibly just ignore these? You still have to detect them, though.
+
+   Will likely require altering some existing templates to properly handle bodies.
+** TODO support form types like ~(or :declaration :expr)~
+   If we even want to do this... it'd be quite hard to make matching functions work.
+
+   What we'd likely want to do is, when codewalking a form that we believe has type ~(or
+   :declaration :expr)~, decide whether it's a declaration or not, and invoke the visitor
+   function on either ~:declaration~ or ~:expr~ appropriately, not just pass the form ~(or
+   :declaration :expr)~ to the visitor function.
+** TODO support ~&key~ templates
+*** TODO also ~&allow-other-keys~
+** TODO support ~defclass~/~defgeneric~ style options
+   Like ~&key~ arguments, only they're alists instead of plists.
+** write templates for remaining Common Lisp special forms and builtin macros
+*** TODO ~lambda~                            :medium:declarations:docstrings:
+*** TODO ~locally~                                      :declarations:medium:
+*** TODO ~macrolet~                                         :usermacros:hard:
+*** TODO ~multiple-value-call~                                         :easy:
+*** TODO ~multiple-value-prog1~                                        :easy:
+*** TODO ~progv~                                                     :medium:
+*** TODO ~quote~                                                       :easy:
+*** TODO ~return-from~                                                 :easy:
+*** TODO ~setq~, ~psetq~                                               :easy:
+*** TODO ~symbol-macrolet~                                  :hard:usermacros:
+*** TODO ~tagbody~                                      :medium:alternatives:
+*** TODO ~the~                                                         :easy:
+*** TODO ~throw~                                                       :easy:
+*** TODO ~unwind-protect~                                              :easy:
+*** TODO ~and~, ~or~                                                   :easy:
+*** TODO ~asset~                                                       :easy:
+*** TODO ~call-method~                                                 :easy:
+*** TODO ~case~, ~ccase~, ~ecase~                                      :easy:
+*** TODO ~check-type~                                                  :easy:
+*** TODO ~cond~                                                        :easy:
+*** TODO ~typecase~, ~ctypecase~, ~etypecase~                          :easy:
+*** TODO ~incf~, ~decf~                                         :easy:places:
+*** TODO ~declaim~                                      :medium:declarations:
+*** TODO ~defclass~                                           :medium:kwargs:
+*** TODO ~defconstant~                                                 :easy:
+*** TODO ~defgeneric~                                         :medium:kwargs:
+*** TODO ~define-compiler-macro~                            :hard:usermacros:
+*** TODO ~define-condition~                                   :medium:kwargs:
+*** TODO ~define-method-combination~                                   :hard:
+*** TODO ~define-modify-macro~                       :hard:usermacros:places:
+*** TODO ~define-setf-expander~                      :hard:usermacros:places:
+*** TODO ~define-symbol-macro~                              :hard:usermacros:
+*** TODO ~defmacro~                                         :hard:usermacros:
+*** TODO ~defmethod~                         :medium:declarations:docstrings:
+*** TODO ~defpackage~                                         :medium:kwargs:
+*** TODO ~defparameter~                                                :easy:
+*** TODO ~defsetf~                                   :hard:usermacros:places:
+*** TODO ~defstruct~                                            :hard:kwargs:
+*** TODO ~deftype~                           :medium:declarations:docstrings:
+*** TODO ~defun~                             :medium:declarations:docstrings:
+*** TODO ~defvar~                                                      :easy:
+*** TODO ~destructuring-bind~                           :medium:declarations:
+*** TODO ~do~, ~do*~                                    :medium:declarations:
+*** TODO ~do-external-symbols~, ~do-all-symbols~, ~do-symbols~ :medium:declarations:
+*** TODO ~dolist~, ~dotimes~                            :medium:declarations:
+*** TODO ~formatter~                                                   :easy:
+*** TODO ~handler-bind~                                       :medium:kwargs:
+*** TODO ~handler-case~                                       :medium:kwargs:
+*** TODO ~ignore-errors~                                               :easy:
+*** TODO ~in-package~                                                  :easy:
+*** TODO ~loop~, ~loop-finish~                                         :hard:
+*** TODO ~multiple-value-bind~                          :medium:declarations:
+*** TODO ~multiple-value-list~                                         :easy:
+*** TODO ~multiple-value-setq~                                         :easy:
+*** TODO ~nth-value~                                                   :easy:
+*** TODO ~push~, ~pop~                                          :easy:places:
+*** TODO ~pprint-exit-if-list-exhausted~, ~pprint-pop~                 :easy:
+*** TODO ~pprint-logical-block~                               :medium:kwargs:
+*** TODO ~print-unreadable-object~                            :medium:kwargs:
+*** TODO ~prog~, ~prog*~                           :medium:docstrings:kwargs:
+*** TODO ~prog1~, ~prog2~                                              :easy:
+*** TODO ~setf~, ~psetf~                                        :easy:places:
+*** TODO ~pushnew~                                     :medium:places:kwargs:
+*** TODO ~remf~                                                 :easy:places:
+*** TODO ~restart-bind~                                       :medium:kwargs:
+*** TODO ~restart-case~                                       :medium:kwargs:
+*** TODO ~return~                                                      :easy:
+*** TODO ~rotatef~, ~shiftf~                                    :easy:places:
+*** TODO ~step~, ~time~                                                :easy:
+*** TODO ~trace~, ~untrace~                                            :easy:
+*** TODO ~when~, ~unless~                                              :easy:
+*** TODO ~with-accessors~, ~with-slots~                 :medium:declarations:
+*** TODO ~with-compilation-unit~                                       :easy:
+*** TODO ~with-condition-restarts~                                     :easy:
+*** TODO ~with-hash-table-iterator~, ~with-package-iterator~ :medium:declarations:
+*** TODO ~with-input-from-string~, ~with-output-to-string~ :medium:declarations:kwargs:
+*** TODO ~with-open-file~, ~with-open-stream~    :medium:declarations:kwargs:
+*** TODO ~with-simple-restart~                                         :easy:
+*** TODO ~with-standard-io-syntax~                                     :easy:
+** TODO write tests
+** TODO new pattern-matching ~defmacro~ alternative which also generates a template
