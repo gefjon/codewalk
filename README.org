@@ -3,6 +3,8 @@
 
 #+tags: { easy(e) medium(m) hard(h) } declarations usermacros docstrings alternatives places kwargs lambdalists multirest
 
+This is an incomplete proof-of-concept implementation of a Common Lisp codewalker.
+
 * usage
   Invoke with:
 
@@ -79,7 +81,8 @@
 * needed work
   If possible, you should view this list in Emacs with org-mode, rather than in the GitHub
   viewer, since it has annotations that GitHub seems to discard.
-** TODO support declarations and docstrings         :declarations:docstrings:
+** DONE support declarations and docstrings         :declarations:docstrings:
+   CLOSED: [2021-09-03 Fri 18:44]
    Possibly just ignore these? You still have to detect them, though.
 
    Will likely require altering some existing templates to properly handle bodies.
@@ -88,6 +91,9 @@
    call ~alexandria:parse-body~ on the provided form, while ~&rest~ retains its current
    behavior. This would require some amount of updating existing templates, since some use
    ~&body~ in places that do not accept docstrings or declarations.
+** TODO different sets of templates for different languages
+   like, have a set of templates for subforms of ~:type~s, and another for subforms of
+   ~:declaration~s.
 ** TODO support form types like ~(or :declaration :expr)~      :alternatives:
    If we even want to do this... it'd be quite hard to make matching functions work.
 
@@ -119,6 +125,9 @@
 ** TODO support lambda lists                                    :lambdalists:
    At present, ~lambda~ et.al. are treated as accepting only required positional
    arguments, not ~&optional~, ~&key~ or ~&rest~ arguments.
+
+   This will likely involve getting the capability to define special form types which have
+   different behavior than just "visit or recurse."
 ** TODO support multi-element destructuring of ~&rest~/~&body~    :multirest:
    As in ~setf~, whose template should be ~&body :place :expr~.
 ** write templates for remaining Common Lisp special forms and builtin macros
@@ -134,7 +143,8 @@
     CLOSED: [2021-09-03 Fri 16:45]
 *** DONE ~cond~                                                        :easy:
     CLOSED: [2021-09-03 Fri 16:47]
-*** TODO ~declaim~                                      :medium:declarations:
+*** DONE ~declaim~                                                   :medium:
+    CLOSED: [2021-09-03 Fri 18:56]
 *** TODO ~defclass~                                           :medium:kwargs:
 *** DONE ~defconstant~                                                 :easy:
     CLOSED: [2021-09-03 Fri 16:48]
@@ -142,24 +152,24 @@
 *** TODO ~define-compiler-macro~                :hard:usermacros:lambdalists:
 *** TODO ~define-condition~                                   :medium:kwargs:
 *** TODO ~define-method-combination~                                   :hard:
-*** TODO ~define-modify-macro~           :hard:usermacros:places:lambdalists:
-*** TODO ~define-setf-expander~          :hard:usermacros:places:lambdalists:
+*** TODO ~define-modify-macro~                  :hard:usermacros:lambdalists:
+*** TODO ~define-setf-expander~                 :hard:usermacros:lambdalists:
 *** TODO ~define-symbol-macro~                              :hard:usermacros:
 *** TODO ~defmacro~                             :hard:usermacros:lambdalists:
-*** TODO ~defmethod~             :medium:declarations:docstrings:lambdalists:
+*** TODO ~defmethod~                                     :medium:lambdalists:
 *** TODO ~defpackage~                                         :medium:kwargs:
 *** DONE ~defparameter~                                                :easy:
     CLOSED: [2021-09-03 Fri 16:49]
-*** TODO ~defsetf~                       :hard:usermacros:places:lambdalists:
+*** TODO ~defsetf~                              :hard:usermacros:lambdalists:
 *** TODO ~defstruct~                               :hard:alternatives:kwargs:
-*** TODO ~deftype~                 :hard:declarations:docstrings:lambdalists:
-*** TODO ~defun~                   :hard:declarations:docstrings:lambdalists:
+*** TODO ~deftype~                                         :hard:lambdalists:
+*** TODO ~defun~                                           :hard:lambdalists:
 *** DONE ~defvar~                                                      :easy:
     CLOSED: [2021-09-03 Fri 16:49]
-*** TODO ~destructuring-bind~                 :hard:declarations:lambdalists:
-*** TODO ~do~, ~do*~                                    :medium:declarations:
-*** TODO ~do-external-symbols~, ~do-all-symbols~, ~do-symbols~ :medium:declarations:
-*** TODO ~dolist~, ~dotimes~                            :medium:declarations:
+*** TODO ~destructuring-bind~                              :hard:lambdalists:
+*** TODO ~do~, ~do*~                                                 :medium:
+*** TODO ~do-external-symbols~, ~do-all-symbols~, ~do-symbols~         :easy:
+*** TODO ~dolist~, ~dotimes~                                           :easy:
 *** DONE ~formatter~                                                   :easy:
     CLOSED: [2021-09-03 Fri 16:49]
 *** TODO ~handler-bind~                                       :medium:kwargs:
@@ -168,14 +178,14 @@
     CLOSED: [2021-09-03 Fri 16:50]
 *** DONE ~in-package~                                                  :easy:
     CLOSED: [2021-09-03 Fri 16:50]
-*** DONE ~incf~, ~decf~                                         :easy:places:
+*** DONE ~incf~, ~decf~                                                :easy:
     CLOSED: [2021-09-03 Fri 16:52]
-*** TODO ~lambda~                  :hard:declarations:docstrings:lambdalists:
-    Needs improvement: support for 
-*** TODO ~locally~                                      :declarations:medium:
+*** TODO ~lambda~                                          :hard:lambdalists:
+    Needs improvement: support for complex lambda lists.
+*** TODO ~locally~                                                   :medium:
 *** TODO ~loop~, ~loop-finish~                                         :hard:
 *** TODO ~macrolet~                             :hard:usermacros:lambdalists:
-*** TODO ~multiple-value-bind~                :hard:declarations:lambdalists:
+*** TODO ~multiple-value-bind~                             :hard:lambdalists:
 *** TODO ~multiple-value-call~                                         :easy:
 *** TODO ~multiple-value-list~                                         :easy:
 *** TODO ~multiple-value-prog1~                                        :easy:
@@ -188,22 +198,22 @@
 *** DONE ~prog1~, ~prog2~                                              :easy:
     CLOSED: [2021-09-03 Fri 16:53]
 *** TODO ~progv~                                                     :medium:
-*** DONE ~push~, ~pop~                                          :easy:places:
+*** DONE ~push~, ~pop~                                          :easy:
     CLOSED: [2021-09-03 Fri 16:54]
-*** TODO ~pushnew~                                     :medium:places:kwargs:
+*** TODO ~pushnew~                                            :medium:kwargs:
 *** DONE ~quote~                                                       :easy:
     CLOSED: [2021-09-03 Fri 16:35]
-*** TODO ~remf~                                                 :easy:places:
+*** TODO ~remf~                                                 :easy:
 *** TODO ~restart-bind~                                       :medium:kwargs:
 *** TODO ~restart-case~                                       :medium:kwargs:
 *** DONE ~return~                                                      :easy:
     CLOSED: [2021-09-03 Fri 16:55]
 *** DONE ~return-from~                                                 :easy:
     CLOSED: [2021-09-03 Fri 16:55]
-*** DONE ~rotatef~                                              :easy:places:
+*** DONE ~rotatef~                                              :easy:
     CLOSED: [2021-09-03 Fri 16:56]
-*** TODO ~shiftf~                                   :medium:places:multirest:
-*** TODO ~setf~, ~psetf~                            :medium:places:multirest:
+*** TODO ~shiftf~                                          :medium:multirest:
+*** TODO ~setf~, ~psetf~                                   :medium:multirest:
 *** TODO ~setq~, ~psetq~                                   :medium:multirest:
 *** TODO ~step~, ~time~                                                :easy:
 *** TODO ~symbol-macrolet~                                  :hard:usermacros:
@@ -218,12 +228,12 @@
     CLOSED: [2021-09-03 Fri 16:58]
 *** DONE ~when~, ~unless~                                              :easy:
     CLOSED: [2021-09-03 Fri 16:59]
-*** TODO ~with-accessors~, ~with-slots~                 :medium:declarations:
+*** TODO ~with-accessors~, ~with-slots~                                :easy:
 *** TODO ~with-compilation-unit~                                       :easy:
 *** TODO ~with-condition-restarts~                                     :easy:
-*** TODO ~with-hash-table-iterator~, ~with-package-iterator~ :medium:declarations:
-*** TODO ~with-input-from-string~, ~with-output-to-string~ :medium:declarations:kwargs:
-*** TODO ~with-open-file~, ~with-open-stream~    :medium:declarations:kwargs:
+*** TODO ~with-hash-table-iterator~, ~with-package-iterator~           :easy:
+*** TODO ~with-input-from-string~, ~with-output-to-string~    :medium:kwargs:
+*** TODO ~with-open-file~, ~with-open-stream~                 :medium:kwargs:
 *** TODO ~with-simple-restart~                                         :easy:
 *** TODO ~with-standard-io-syntax~                                     :easy:
 ** TODO write tests
