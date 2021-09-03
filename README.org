@@ -1,0 +1,17 @@
+#+title: CODEWALK: a portable codewalker for Common Lisp
+#+author: Phoebe Goldman
+
+#+begin_src lisp
+  (walk-subforms (lambda (type form) (format t "~&~a is a(n) ~a~%" form type) form)
+                 '(let ((a (foo))) (bar a)))
+  ;; LET is a(n) FORM-HEAD
+  ;; A is a(n) VARIABLE-BINDING
+  ;; (FOO) is a(n) EXPR
+  ;; FOO is a(n) FUNCTION
+  ;; (BAR A) is a(n) EXPR
+  ;; BAR is a(n) FUNCTION
+  ;; A is a(n) EXPR
+  ;;
+  ;; => (LET ((A (FOO)))
+  ;;      (BAR A))
+#+end_src
