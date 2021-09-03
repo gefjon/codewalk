@@ -18,6 +18,8 @@
   ;;      (BAR A))
 #+end_src
 * needed work
+  If possible, you should view this list in Emacs with org-mode, rather than in the GitHub
+  viewer, since it has annotations that GitHub seems to discard.
 ** TODO support declarations and docstrings
    Possibly just ignore these? You still have to detect them, though.
 
