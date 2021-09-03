@@ -1,112 +1,223 @@
 #+title: CODEWALK: a portable codewalker for Common Lisp
 #+author: Phoebe Goldman
 
-#+tags: { easy(e) medium(m) hard(h) } declarations usermacros docstrings alternatives places kwargs
+#+tags: { easy(e) medium(m) hard(h) } declarations usermacros docstrings alternatives places kwargs lambdalists multirest
 
-#+begin_src lisp
-  (walk-subforms (lambda (type form) (format t "~&~a is a(n) ~a~%" form type) form)
-                 '(let ((a (foo))) (bar a)))
-  ;; LET is a(n) FORM-HEAD
-  ;; A is a(n) VARIABLE-BINDING
-  ;; (FOO) is a(n) EXPR
-  ;; FOO is a(n) FUNCTION
-  ;; (BAR A) is a(n) EXPR
-  ;; BAR is a(n) FUNCTION
-  ;; A is a(n) EXPR
-  ;;
-  ;; => (LET ((A (FOO)))
-  ;;      (BAR A))
-#+end_src
+* usage
+  Invoke with:
+
+  #+begin_src lisp
+    (walk-subforms FUNCTION FORM)
+  #+end_src
+
+  This is in many ways analogous to ~mapcar~ or ~map~, except that ~FUNCTION~ should
+  accept two arguments, a keyword ~SUBFORM-TYPE~ and a ~SUBFORM~.
+
+* current form types
+  As of writing, [2021-09-03], the ~SUBFORM-TYPE~ argument to a ~walk-subforms~ visitor
+  may take on the following values:
+** ~:block-name~
+   The name of a block, as in ~block~ or ~return-from~.
+** ~:expr~
+   A Common Lisp expression, suitable for ~eval~.
+** ~:catch-tag~
+   A symbol used in ~catch~ or ~throw~.
+** ~:eval-time~
+   One of the keywords ~:compile-toplevel~, ~:load-toplevel~ or ~:execute~, as provided to
+   ~eval-when~.
+** ~:function-binding~
+   A symbol which names a new function, to be bound by ~flet~, ~labels~, ~defun~, etc.
+** ~:variable-binding~
+   A symbol which names a new variable, to be bound by ~let~, ~let*~, ~lambda~,
+   ~multiple-value-bind~, etc.
+** ~:function~
+   A form suitable for the ~function~ special form or the ~#'~ reader macro, i.e. a symbol
+   which names a function or a ~lambda~ form.
+** ~:go-tag~
+   A symbol used in ~tagbody~ or ~go~.
+** ~:constant~
+   An unevaluated constant object, e.g. in ~quote~.
+** ~:type~
+   An unquoted type, as in ~the~ or ~check-type~.
+** ~:docstring~
+   A constant string, to be used as a documentation string.
+** ~:package-name~
+   A constant string or symbol, to be used as a package name.
+** ~:place~
+   A form suitable for ~setf~ et.al.
+* examples
+** print all the subforms of a form
+   #+begin_src lisp
+     (walk-subforms (lambda (type form)
+                      (format t "~&~a is a(n) ~a~%" form type)
+                      (values form t))
+                    '(let ((a (foo))) (bar a)))
+     ;; LET is a(n) FORM-HEAD
+     ;; A is a(n) VARIABLE-BINDING
+     ;; (FOO) is a(n) EXPR
+     ;; FOO is a(n) FUNCTION
+     ;; (BAR A) is a(n) EXPR
+     ;; BAR is a(n) FUNCTION
+     ;; A is a(n) EXPR
+     ;;
+     ;; => (LET ((A (FOO)))
+     ;;      (BAR A))
+   #+end_src
+** rename a variable
+   #+begin_src lisp
+     (walk-subforms (lambda (type form)
+                      (form-typecase (type form)
+                        ((:variable-binding :expr)
+                         (if (eq form 'rename-me)
+                             (values 'different-name nil)
+                             (values form t)))))
+                    '(let ((rename-me (rename-me but-not-as-a-function)))
+                      (different-function rename-me)))
+     ;; => (LET ((DIFFERENT-NAME (RENAME-ME BUT-NOT-AS-A-FUNCTION)))
+     ;;      (DIFFERENT-FUNCTION DIFFERENT-NAME))
+   #+end_src
 * needed work
   If possible, you should view this list in Emacs with org-mode, rather than in the GitHub
   viewer, since it has annotations that GitHub seems to discard.
-** TODO support declarations and docstrings
+** TODO support declarations and docstrings         :declarations:docstrings:
    Possibly just ignore these? You still have to detect them, though.
 
    Will likely require altering some existing templates to properly handle bodies.
-** TODO support form types like ~(or :declaration :expr)~
+
+   Simple version: instead of treating ~&body~ and ~&rest~ as equivalent, have ~&body~
+   call ~alexandria:parse-body~ on the provided form, while ~&rest~ retains its current
+   behavior. This would require some amount of updating existing templates, since some use
+   ~&body~ in places that do not accept docstrings or declarations.
+** TODO support form types like ~(or :declaration :expr)~      :alternatives:
    If we even want to do this... it'd be quite hard to make matching functions work.
 
    What we'd likely want to do is, when codewalking a form that we believe has type ~(or
    :declaration :expr)~, decide whether it's a declaration or not, and invoke the visitor
    function on either ~:declaration~ or ~:expr~ appropriately, not just pass the form ~(or
    :declaration :expr)~ to the visitor function.
-** TODO support ~&key~ templates
+** TODO support ~&key~ templates                                     :kwargs:
 *** TODO also ~&allow-other-keys~
-** TODO support ~defclass~/~defgeneric~ style options
+** TODO support ~defclass~/~defgeneric~ style options                :kwargs:
    Like ~&key~ arguments, only they're alists instead of plists.
+
+   Likely, the template syntax for this will be ~&alist~, like:
+   #+begin_src lisp
+     (register-subform-types defgeneric (&rest :variable-binding)
+       &alist
+       (:documentation :docstring)
+       (:method-combination :method-combination)
+       (:generic-function-class :class-name)
+       (:method-class :class-name)
+       (:argument-precedence-order &rest :constant)
+       (declare &rest :declaration)
+       (:method etc))
+   #+end_src
+   Note that I'm not actually clear on how to parse ~:method~ forms, but whatever.
+** TODO inline optionals
+   Like method qualifiers on ~defmethod~.
+** TODO support arbitrary traversal functions in place of templates
+** TODO support lambda lists                                    :lambdalists:
+   At present, ~lambda~ et.al. are treated as accepting only required positional
+   arguments, not ~&optional~, ~&key~ or ~&rest~ arguments.
+** TODO support multi-element destructuring of ~&rest~/~&body~    :multirest:
+   As in ~setf~, whose template should be ~&body :place :expr~.
 ** write templates for remaining Common Lisp special forms and builtin macros
-*** TODO ~lambda~                            :medium:declarations:docstrings:
-*** TODO ~locally~                                      :declarations:medium:
-*** TODO ~macrolet~                                         :usermacros:hard:
-*** TODO ~multiple-value-call~                                         :easy:
-*** TODO ~multiple-value-prog1~                                        :easy:
-*** TODO ~progv~                                                     :medium:
-*** TODO ~quote~                                                       :easy:
-*** TODO ~return-from~                                                 :easy:
-*** TODO ~setq~, ~psetq~                                               :easy:
-*** TODO ~symbol-macrolet~                                  :hard:usermacros:
-*** TODO ~tagbody~                                      :medium:alternatives:
-*** TODO ~the~                                                         :easy:
-*** TODO ~throw~                                                       :easy:
-*** TODO ~unwind-protect~                                              :easy:
-*** TODO ~and~, ~or~                                                   :easy:
-*** TODO ~asset~                                                       :easy:
+*** DONE ~and~, ~or~                                                   :easy:
+    CLOSED: [2021-09-03 Fri 16:41]
+*** DONE ~assert~                                                      :easy:
+    CLOSED: [2021-09-03 Fri 16:46]
 *** TODO ~call-method~                                                 :easy:
-*** TODO ~case~, ~ccase~, ~ecase~                                      :easy:
-*** TODO ~check-type~                                                  :easy:
-*** TODO ~cond~                                                        :easy:
-*** TODO ~typecase~, ~ctypecase~, ~etypecase~                          :easy:
-*** TODO ~incf~, ~decf~                                         :easy:places:
+*** TODO ~case~, ~ccase~, ~ecase~                       :medium:alternatives:
+    Needs fix: support for multiple alternatives to match, like in ~(case foo ((a b)
+    (print 'early-letter)))~
+*** DONE ~check-type~                                                  :easy:
+    CLOSED: [2021-09-03 Fri 16:45]
+*** DONE ~cond~                                                        :easy:
+    CLOSED: [2021-09-03 Fri 16:47]
 *** TODO ~declaim~                                      :medium:declarations:
 *** TODO ~defclass~                                           :medium:kwargs:
-*** TODO ~defconstant~                                                 :easy:
-*** TODO ~defgeneric~                                         :medium:kwargs:
-*** TODO ~define-compiler-macro~                            :hard:usermacros:
+*** DONE ~defconstant~                                                 :easy:
+    CLOSED: [2021-09-03 Fri 16:48]
+*** TODO ~defgeneric~                               :hard:kwargs:lambdalists:
+*** TODO ~define-compiler-macro~                :hard:usermacros:lambdalists:
 *** TODO ~define-condition~                                   :medium:kwargs:
 *** TODO ~define-method-combination~                                   :hard:
-*** TODO ~define-modify-macro~                       :hard:usermacros:places:
-*** TODO ~define-setf-expander~                      :hard:usermacros:places:
+*** TODO ~define-modify-macro~           :hard:usermacros:places:lambdalists:
+*** TODO ~define-setf-expander~          :hard:usermacros:places:lambdalists:
 *** TODO ~define-symbol-macro~                              :hard:usermacros:
-*** TODO ~defmacro~                                         :hard:usermacros:
-*** TODO ~defmethod~                         :medium:declarations:docstrings:
+*** TODO ~defmacro~                             :hard:usermacros:lambdalists:
+*** TODO ~defmethod~             :medium:declarations:docstrings:lambdalists:
 *** TODO ~defpackage~                                         :medium:kwargs:
-*** TODO ~defparameter~                                                :easy:
-*** TODO ~defsetf~                                   :hard:usermacros:places:
-*** TODO ~defstruct~                                            :hard:kwargs:
-*** TODO ~deftype~                           :medium:declarations:docstrings:
-*** TODO ~defun~                             :medium:declarations:docstrings:
-*** TODO ~defvar~                                                      :easy:
-*** TODO ~destructuring-bind~                           :medium:declarations:
+*** DONE ~defparameter~                                                :easy:
+    CLOSED: [2021-09-03 Fri 16:49]
+*** TODO ~defsetf~                       :hard:usermacros:places:lambdalists:
+*** TODO ~defstruct~                               :hard:alternatives:kwargs:
+*** TODO ~deftype~                 :hard:declarations:docstrings:lambdalists:
+*** TODO ~defun~                   :hard:declarations:docstrings:lambdalists:
+*** DONE ~defvar~                                                      :easy:
+    CLOSED: [2021-09-03 Fri 16:49]
+*** TODO ~destructuring-bind~                 :hard:declarations:lambdalists:
 *** TODO ~do~, ~do*~                                    :medium:declarations:
 *** TODO ~do-external-symbols~, ~do-all-symbols~, ~do-symbols~ :medium:declarations:
 *** TODO ~dolist~, ~dotimes~                            :medium:declarations:
-*** TODO ~formatter~                                                   :easy:
+*** DONE ~formatter~                                                   :easy:
+    CLOSED: [2021-09-03 Fri 16:49]
 *** TODO ~handler-bind~                                       :medium:kwargs:
 *** TODO ~handler-case~                                       :medium:kwargs:
-*** TODO ~ignore-errors~                                               :easy:
-*** TODO ~in-package~                                                  :easy:
+*** DONE ~ignore-errors~                                               :easy:
+    CLOSED: [2021-09-03 Fri 16:50]
+*** DONE ~in-package~                                                  :easy:
+    CLOSED: [2021-09-03 Fri 16:50]
+*** DONE ~incf~, ~decf~                                         :easy:places:
+    CLOSED: [2021-09-03 Fri 16:52]
+*** TODO ~lambda~                  :hard:declarations:docstrings:lambdalists:
+    Needs improvement: support for 
+*** TODO ~locally~                                      :declarations:medium:
 *** TODO ~loop~, ~loop-finish~                                         :hard:
-*** TODO ~multiple-value-bind~                          :medium:declarations:
+*** TODO ~macrolet~                             :hard:usermacros:lambdalists:
+*** TODO ~multiple-value-bind~                :hard:declarations:lambdalists:
+*** TODO ~multiple-value-call~                                         :easy:
 *** TODO ~multiple-value-list~                                         :easy:
+*** TODO ~multiple-value-prog1~                                        :easy:
 *** TODO ~multiple-value-setq~                                         :easy:
 *** TODO ~nth-value~                                                   :easy:
-*** TODO ~push~, ~pop~                                          :easy:places:
 *** TODO ~pprint-exit-if-list-exhausted~, ~pprint-pop~                 :easy:
 *** TODO ~pprint-logical-block~                               :medium:kwargs:
 *** TODO ~print-unreadable-object~                            :medium:kwargs:
 *** TODO ~prog~, ~prog*~                           :medium:docstrings:kwargs:
-*** TODO ~prog1~, ~prog2~                                              :easy:
-*** TODO ~setf~, ~psetf~                                        :easy:places:
+*** DONE ~prog1~, ~prog2~                                              :easy:
+    CLOSED: [2021-09-03 Fri 16:53]
+*** TODO ~progv~                                                     :medium:
+*** DONE ~push~, ~pop~                                          :easy:places:
+    CLOSED: [2021-09-03 Fri 16:54]
 *** TODO ~pushnew~                                     :medium:places:kwargs:
+*** DONE ~quote~                                                       :easy:
+    CLOSED: [2021-09-03 Fri 16:35]
 *** TODO ~remf~                                                 :easy:places:
 *** TODO ~restart-bind~                                       :medium:kwargs:
 *** TODO ~restart-case~                                       :medium:kwargs:
-*** TODO ~return~                                                      :easy:
-*** TODO ~rotatef~, ~shiftf~                                    :easy:places:
+*** DONE ~return~                                                      :easy:
+    CLOSED: [2021-09-03 Fri 16:55]
+*** DONE ~return-from~                                                 :easy:
+    CLOSED: [2021-09-03 Fri 16:55]
+*** DONE ~rotatef~                                              :easy:places:
+    CLOSED: [2021-09-03 Fri 16:56]
+*** TODO ~shiftf~                                   :medium:places:multirest:
+*** TODO ~setf~, ~psetf~                            :medium:places:multirest:
+*** TODO ~setq~, ~psetq~                                   :medium:multirest:
 *** TODO ~step~, ~time~                                                :easy:
+*** TODO ~symbol-macrolet~                                  :hard:usermacros:
+*** TODO ~tagbody~                                      :medium:alternatives:
+*** DONE ~the~                                                         :easy:
+    CLOSED: [2021-09-03 Fri 16:57]
+*** DONE ~throw~                                                       :easy:
+    CLOSED: [2021-09-03 Fri 16:58]
 *** TODO ~trace~, ~untrace~                                            :easy:
-*** TODO ~when~, ~unless~                                              :easy:
+*** TODO ~typecase~, ~ctypecase~, ~etypecase~                          :easy:
+*** DONE ~unwind-protect~                                              :easy:
+    CLOSED: [2021-09-03 Fri 16:58]
+*** DONE ~when~, ~unless~                                              :easy:
+    CLOSED: [2021-09-03 Fri 16:59]
 *** TODO ~with-accessors~, ~with-slots~                 :medium:declarations:
 *** TODO ~with-compilation-unit~                                       :easy:
 *** TODO ~with-condition-restarts~                                     :easy:
